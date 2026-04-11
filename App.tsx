@@ -14,7 +14,7 @@ import ExpenseModal from './components/ExpenseModal';
 import ProductSaleModal from './components/ProductSaleModal';
 import Login from './components/Login';
 import SystemDetailView from './components/SystemDetailView';
-import { Client, ExternalSystem, PaymentLog, PaymentStatus, Expense, PaymentType, PaymentStatusConfig } from './types';
+import { Client, ExternalSystem, PaymentLog, PaymentStatus, Expense, PaymentType, PaymentStatusConfig, BillingCycle } from './types';
 import { generateMonthlyReport } from './services/reportService';
 import { supabase } from './services/supabase';
 
@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [statusConfigs, setStatusConfigs] = useState<PaymentStatusConfig[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [supabaseConfigured, setSupabaseConfigured] = useState(true);
 
   const [clientFilterSystemId, setClientFilterSystemId] = useState('all');
   const [viewingSystemId, setViewingSystemId] = useState<string | null>(null);
@@ -59,16 +60,37 @@ const App: React.FC = () => {
   }, [notification]);
 
   useEffect(() => {
+    const checkConfig = () => {
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!url || url.includes('placeholder') || !key || key.includes('placeholder')) {
+        setSupabaseConfigured(false);
+      }
+    };
+    checkConfig();
+  }, []);
+
+  useEffect(() => {
     const fetchData = async () => {
       if (!isLoggedIn) return;
+      
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!url || url.includes('placeholder') || !key || key.includes('placeholder')) {
+        console.warn('Supabase not configured. Using empty state.');
+        setSupabaseConfigured(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
         const [
-          { data: systemsData },
-          { data: clientsData },
-          { data: paymentsData },
-          { data: expensesData },
-          { data: statusConfigsData }
+          { data: systemsData, error: systemsError },
+          { data: clientsData, error: clientsError },
+          { data: paymentsData, error: paymentsError },
+          { data: expensesData, error: expensesError },
+          { data: statusConfigsData, error: statusConfigsError }
         ] = await Promise.all([
           supabase.from('external_systems').select('*'),
           supabase.from('clients').select('*'),
@@ -77,34 +99,72 @@ const App: React.FC = () => {
           supabase.from('payment_status_configs').select('*')
         ]);
 
+        if (systemsError) throw systemsError;
+        if (clientsError) throw clientsError;
+        if (paymentsError) throw paymentsError;
+        if (expensesError) throw expensesError;
+        if (statusConfigsError) throw statusConfigsError;
+
         if (systemsData) setSystems(systemsData.map(s => ({...s, id: s.id})));
-        if (clientsData) setClients(clientsData.map(c => ({
-          ...c, 
-          systemId: c.system_id, 
-          planName: c.plan_name, 
-          billingCycle: c.billing_cycle,
-          nextBillingDate: c.next_billing_date,
-          annualRenewalDate: c.annual_renewal_date
-        })));
-        if (paymentsData) setPayments(paymentsData.map(p => ({
-          ...p,
-          clientId: p.client_id,
-          systemId: p.system_id,
-          clientName: p.client_name,
-          costAmount: p.cost_amount
-        })));
-        if (expensesData) setExpenses(expensesData.map(e => ({
-          ...e,
-          dueDate: e.due_date,
-          systemId: e.system_id
-        })));
-        if (statusConfigsData) setStatusConfigs(statusConfigsData.map(s => ({
-          ...s,
-          colorClass: s.color_class,
-          isDefault: s.is_default
-        })));
-      } catch (error) {
+        
+        if (clientsData) {
+          setClients(clientsData.map(c => ({
+            ...c, 
+            systemId: c.system_id, 
+            planName: c.plan_name, 
+            billingCycle: c.billing_cycle || BillingCycle.MONTHLY,
+            nextBillingDate: c.next_billing_date,
+            annualRenewalDate: c.annual_renewal_date
+          })));
+        }
+
+        if (paymentsData) {
+          setPayments(paymentsData.map(p => ({
+            ...p,
+            clientId: p.client_id,
+            systemId: p.system_id,
+            clientName: p.client_name,
+            costAmount: p.cost_amount
+          })));
+        }
+
+        if (expensesData) {
+          setExpenses(expensesData.map(e => ({
+            ...e,
+            dueDate: e.due_date,
+            systemId: e.system_id
+          })));
+        }
+
+        if (statusConfigsData) {
+          if (statusConfigsData.length > 0) {
+            setStatusConfigs(statusConfigsData.map(s => ({
+              ...s,
+              colorClass: s.color_class,
+              isDefault: s.is_default
+            })));
+          } else {
+            setStatusConfigs(DEFAULT_STATUS_CONFIGS);
+          }
+        }
+        
+        setSupabaseConfigured(true);
+        
+        // Se as tabelas existem mas estão vazias, pode ser que o usuário não rodou o SQL
+        if (systemsData?.length === 0 && clientsData?.length === 0) {
+          console.info('Database connected but empty. Did you run the SQL script?');
+        }
+
+      } catch (error: any) {
         console.error('Error fetching data:', error);
+        let msg = "Erro ao conectar com Supabase.";
+        if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
+          msg = "Tabelas não encontradas. Você rodou o script SQL no Supabase?";
+        } else if (error.message?.includes('JWT') || error.code === 'PGRST301') {
+          msg = "Erro de autenticação/RLS. Verifique as políticas no Supabase.";
+        }
+        showToast(msg, "info");
+        setSupabaseConfigured(false);
       } finally {
         setIsLoading(false);
       }
@@ -152,33 +212,36 @@ const App: React.FC = () => {
         phone: client.phone,
         system_id: client.systemId,
         status: client.status,
+        billing_cycle: client.billingCycle,
         plan_name: client.planName,
         amount: client.amount,
         discount: client.discount || 0,
         currency: client.currency || 'BRL',
-        billing_cycle: client.billingCycle,
         next_billing_date: client.nextBillingDate,
         annual_renewal_date: client.annualRenewalDate
       };
 
       if (editingClient) {
-        await supabase.from('clients').update(clientData).eq('id', client.id);
+        const { error } = await supabase.from('clients').update(clientData).eq('id', client.id);
+        if (error) throw error;
         setClients(clients.map(c => c.id === client.id ? client : c));
         showToast(`Cliente ${client.name} atualizado!`);
       } else {
-        await supabase.from('clients').insert([clientData]);
+        const { error: insertError } = await supabase.from('clients').insert([clientData]);
+        if (insertError) throw insertError;
         
         const finalAmount = Math.max(0, client.amount - (client.discount || 0));
         const installments: PaymentLog[] = [];
         let currentDate = new Date(client.nextBillingDate);
         
-        // Determine number of installments based on billing cycle
-        let installmentsCount = 12; // Default for monthly
-        if (client.billingCycle === 'one_time') installmentsCount = 1;
-        else if (client.billingCycle === 'annually') installmentsCount = 1; // Or maybe 2-3 years, but 1 is safe for now
-        else if (client.billingCycle === 'weekly') installmentsCount = 12; // Project 12 weeks ahead
-        
-        for (let i = 1; i <= installmentsCount; i++) {
+        // Determinar número de parcelas e intervalo
+        let numInstallments = 1;
+        if (client.billingCycle === BillingCycle.MONTHLY) numInstallments = 12;
+        else if (client.billingCycle === BillingCycle.WEEKLY) numInstallments = 52;
+        else if (client.billingCycle === BillingCycle.ANNUAL) numInstallments = 2;
+        else if (client.billingCycle === BillingCycle.ONETIME) numInstallments = 1;
+
+        for (let i = 1; i <= numInstallments; i++) {
           installments.push({
             id: `p_${Math.random().toString(36).substr(2, 9)}`,
             clientId: client.id,
@@ -187,16 +250,20 @@ const App: React.FC = () => {
             date: currentDate.toISOString().split('T')[0],
             status: 'pending',
             type: PaymentType.SUBSCRIPTION,
-            notes: client.billingCycle === 'one_time' ? 'Pagamento Único' : `Parcela ${i}/${installmentsCount} automática`
+            notes: client.billingCycle === BillingCycle.ONETIME 
+              ? 'Pagamento Único' 
+              : `Parcela ${i}/${numInstallments} (${client.billingCycle})`
           });
-          
-          if (client.billingCycle === 'weekly') {
+
+          // Avançar data conforme o ciclo
+          if (client.billingCycle === BillingCycle.MONTHLY) {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+          } else if (client.billingCycle === BillingCycle.WEEKLY) {
             currentDate.setDate(currentDate.getDate() + 7);
-          } else if (client.billingCycle === 'annually') {
+          } else if (client.billingCycle === BillingCycle.ANNUAL) {
             currentDate.setFullYear(currentDate.getFullYear() + 1);
           } else {
-            // Default to monthly
-            currentDate.setMonth(currentDate.getMonth() + 1);
+            break; // Pagamento único não avança
           }
         }
         
@@ -211,16 +278,17 @@ const App: React.FC = () => {
           notes: p.notes
         }));
 
-        await supabase.from('payment_logs').insert(paymentsData);
+        const { error: paymentsError } = await supabase.from('payment_logs').insert(paymentsData);
+        if (paymentsError) throw paymentsError;
         
         setClients([client, ...clients]);
         setPayments([...installments, ...payments]);
         showToast(`${client.name} cadastrado com sucesso!`);
       }
       setEditingClient(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving client:', error);
-      showToast("Erro ao salvar cliente", "info");
+      showToast(`Erro ao salvar: ${error.message || 'Verifique sua conexão'}`, "info");
     }
   };
 
@@ -581,6 +649,10 @@ const App: React.FC = () => {
                     <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest truncate opacity-80">
                       Digital Freeshop Admin
                     </p>
+                    <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${supabaseConfigured ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                      <span className={`w-1 h-1 rounded-full ${supabaseConfigured ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`}></span>
+                      {supabaseConfigured ? 'Supabase Conectado' : 'Supabase Desconectado'}
+                    </div>
                     {(activeTab !== 'dashboard' || viewingSystemId) && (
                       <button 
                         onClick={() => {
@@ -630,6 +702,42 @@ const App: React.FC = () => {
           </header>
 
           <div className="w-full">
+            {!supabaseConfigured && isLoggedIn && (
+              <div className="mb-6 p-5 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col gap-4 animate-in slide-in-from-top duration-500">
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl mt-1">🚀</div>
+                  <div className="flex-1">
+                    <h4 className="text-base font-black text-amber-900">Configuração do Supabase Necessária</h4>
+                    <p className="text-sm text-amber-700 mt-1">
+                      O sistema está pronto, mas precisa se conectar ao seu banco de dados para carregar e salvar informações permanentemente.
+                    </p>
+                    
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
+                        <span className="w-5 h-5 flex items-center justify-center bg-amber-200 rounded-full text-[10px]">1</span>
+                        Configure as chaves <b>VITE_SUPABASE_URL</b> e <b>VITE_SUPABASE_ANON_KEY</b> no menu de Configurações (Secrets).
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
+                        <span className="w-5 h-5 flex items-center justify-center bg-amber-200 rounded-full text-[10px]">2</span>
+                        Copie o conteúdo do arquivo <b>supabase_schema.sql</b> e execute no SQL Editor do seu painel Supabase.
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
+                        <span className="w-5 h-5 flex items-center justify-center bg-amber-200 rounded-full text-[10px]">3</span>
+                        Certifique-se de que o RLS (Row Level Security) está desativado ou com políticas de acesso configuradas.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 pt-2 border-t border-amber-100">
+                  <button 
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2.5 bg-amber-600 text-white text-xs font-black rounded-xl hover:bg-amber-700 transition-all active:scale-95 shadow-lg shadow-amber-200"
+                  >
+                    Verificar Conexão Agora
+                  </button>
+                </div>
+              </div>
+            )}
             {isLoading && (
               <div className="fixed inset-0 bg-white/50 backdrop-blur-sm z-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>

@@ -10,6 +10,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, error }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const isSupabaseConfigured = !!import.meta.env.VITE_SUPABASE_URL && !import.meta.env.VITE_SUPABASE_URL.includes('placeholder');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,9 +90,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, error }) => {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-50 text-center">
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Acesso restrito a pessoal autorizado</p>
-          </div>
+            <div className="mt-8 pt-6 border-t border-slate-50 text-center space-y-3">
+              <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter ${isSupabaseConfigured ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isSupabaseConfigured ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></span>
+                {isSupabaseConfigured ? 'Supabase Pronto' : 'Supabase não configurado'}
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Acesso restrito a pessoal autorizado</p>
+            </div>
         </div>
         
         <div className="text-center mt-8 text-xs text-slate-400 font-medium space-y-1">

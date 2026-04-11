@@ -51,7 +51,6 @@ const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, syst
         amount: 0,
         discount: 0,
         planName: '',
-        billingCycle: BillingCycle.MONTHLY,
         nextBillingDate: new Date().toISOString().split('T')[0],
         status: SubscriptionStatus.ACTIVE,
         currency: 'BRL',
@@ -131,6 +130,16 @@ const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, syst
           newValue: formData.amount!
         });
       }
+      if (editingClient.billingCycle !== formData.billingCycle) {
+        newHistory.push({
+          id: `h_${Math.random().toString(36).substr(2, 9)}`,
+          date: now,
+          adminName: admin,
+          field: 'billingCycle',
+          oldValue: editingClient.billingCycle,
+          newValue: formData.billingCycle!
+        });
+      }
     }
 
     onSave({
@@ -190,19 +199,19 @@ const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, syst
                   </select>
                 </div>
 
-                <div className="sm:col-span-2">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Nome do Plano / Modalidade</label>
-                  <input required type="text" placeholder="Ex: Mensal Gold" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-semibold" value={formData.planName} onChange={e => setFormData({...formData, planName: e.target.value})} />
-                </div>
-
-                <div className="sm:col-span-2 md:col-span-1">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Ciclo de Cobrança</label>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Ciclo de Faturamento</label>
                   <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-bold appearance-none cursor-pointer" value={formData.billingCycle} onChange={e => setFormData({...formData, billingCycle: e.target.value as BillingCycle})}>
                     <option value={BillingCycle.WEEKLY}>Semanal</option>
                     <option value={BillingCycle.MONTHLY}>Mensal</option>
-                    <option value={BillingCycle.ANNUALLY}>Anual</option>
-                    <option value={BillingCycle.ONE_TIME}>Pagamento Único</option>
+                    <option value={BillingCycle.ANNUAL}>Anual</option>
+                    <option value={BillingCycle.ONETIME}>Pagamento Único</option>
                   </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Nome do Plano / Modalidade</label>
+                  <input required type="text" placeholder="Ex: Mensal Gold" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-semibold" value={formData.planName} onChange={e => setFormData({...formData, planName: e.target.value})} />
                 </div>
 
                 {/* Seletor de Data Interativo */}

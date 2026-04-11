@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Client, ExternalSystem, SubscriptionStatus } from '../types';
+import { Client, ExternalSystem, SubscriptionStatus, BillingCycle } from '../types';
 
 interface ClientListProps {
   clients: Client[];
@@ -57,16 +57,6 @@ const ClientList: React.FC<ClientListProps> = ({
       case 'EUR': return '€';
       case 'BRL': return 'R$';
       default: return currency || 'R$';
-    }
-  };
-
-  const getBillingCycleLabel = (cycle: string) => {
-    switch (cycle) {
-      case 'weekly': return 'Semanal';
-      case 'monthly': return 'Mensal';
-      case 'annually': return 'Anual';
-      case 'one_time': return 'Único';
-      default: return 'Mensal';
     }
   };
 
@@ -176,8 +166,9 @@ const ClientList: React.FC<ClientListProps> = ({
                          <span className="text-lg group-hover:scale-110 transition-transform duration-300">{system?.icon || '💻'}</span>
                          <span className="font-black text-slate-700 text-[10px] md:text-xs">{system?.name}</span>
                       </div>
-                      <div className="text-[9px] text-slate-400 mt-0.5 font-black uppercase truncate max-w-[150px] italic">
-                        {client.planName} • {getBillingCycleLabel(client.billingCycle)}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="text-[9px] text-slate-400 font-black uppercase truncate max-w-[150px] italic">{client.planName}</div>
+                        <BillingCycleBadge cycle={client.billingCycle} />
                       </div>
                     </td>
                     <td className="px-6 py-5">
@@ -243,6 +234,26 @@ const SubscriptionBadge: React.FC<{ status: SubscriptionStatus }> = ({ status })
   return (
     <span className={`px-2.5 py-1 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-[0.05em] border shadow-sm ${styles[status] || 'bg-slate-100'}`}>
       {labels[status] || status}
+    </span>
+  );
+};
+
+const BillingCycleBadge: React.FC<{ cycle: BillingCycle }> = ({ cycle }) => {
+  const labels: Record<string, string> = {
+    [BillingCycle.WEEKLY]: 'Semanal',
+    [BillingCycle.MONTHLY]: 'Mensal',
+    [BillingCycle.ANNUAL]: 'Anual',
+    [BillingCycle.ONETIME]: 'Único',
+  };
+  const styles: Record<string, string> = {
+    [BillingCycle.WEEKLY]: 'bg-purple-50 text-purple-600 border-purple-100',
+    [BillingCycle.MONTHLY]: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+    [BillingCycle.ANNUAL]: 'bg-amber-50 text-amber-600 border-amber-100',
+    [BillingCycle.ONETIME]: 'bg-slate-50 text-slate-600 border-slate-100',
+  };
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter border ${styles[cycle] || 'bg-slate-50'}`}>
+      {labels[cycle] || cycle}
     </span>
   );
 };

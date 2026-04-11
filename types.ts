@@ -28,8 +28,8 @@ export enum SubscriptionStatus {
 export enum BillingCycle {
   WEEKLY = 'weekly',
   MONTHLY = 'monthly',
-  ANNUALLY = 'annually',
-  ONE_TIME = 'one_time'
+  ANNUAL = 'annual',
+  ONETIME = 'onetime'
 }
 
 export enum ExpenseCategory {
@@ -48,7 +48,7 @@ export interface HistoryEntry {
   id: string;
   date: string;
   adminName: string;
-  field: 'status' | 'planName' | 'amount' | 'discount';
+  field: 'status' | 'planName' | 'amount' | 'discount' | 'billingCycle';
   oldValue: string | number;
   newValue: string | number;
 }
@@ -67,11 +67,11 @@ export interface Client {
   phone: string;
   systemId: string;
   status: SubscriptionStatus;
+  billingCycle: BillingCycle;
   planName: string;
   amount: number; 
   discount: number; 
   currency: string;
-  billingCycle: BillingCycle;
   nextBillingDate: string;
   annualRenewalDate?: string;
   history?: HistoryEntry[];

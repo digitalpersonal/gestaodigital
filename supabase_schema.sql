@@ -14,6 +14,7 @@ CREATE TABLE clients (
     phone TEXT NOT NULL,
     system_id TEXT REFERENCES external_systems(id),
     status TEXT NOT NULL,
+    billing_cycle TEXT NOT NULL DEFAULT 'monthly',
     plan_name TEXT NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     discount DECIMAL(10, 2) NOT NULL DEFAULT 0,
