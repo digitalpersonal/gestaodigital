@@ -17,7 +17,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onEdit, onDelete, o
     if (filter === 'paid') return e.status === 'paid';
     if (filter === 'pending') return e.status === 'pending';
     return e.category === filter;
-  });
+  }).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
   return (
     <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">

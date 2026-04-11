@@ -180,7 +180,7 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({
       const matchesSearch = searchStr.includes(searchTerm.toLowerCase());
 
       return matchesSystem && matchesStatus && matchesSearch;
-    });
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [payments, filterSystem, selectedStatuses, searchTerm, clients]);
 
   const totalPages = Math.ceil(filteredPayments.length / ITEMS_PER_PAGE);
