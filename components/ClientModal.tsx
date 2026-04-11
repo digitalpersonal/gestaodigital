@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Client, ExternalSystem, SubscriptionStatus, HistoryEntry } from '../types';
+import { Client, ExternalSystem, SubscriptionStatus, HistoryEntry, BillingCycle } from '../types';
 
 interface ClientModalProps {
   isOpen: boolean;
@@ -27,6 +27,7 @@ const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, syst
     planName: '',
     nextBillingDate: new Date().toISOString().split('T')[0],
     status: SubscriptionStatus.ACTIVE,
+    billingCycle: BillingCycle.MONTHLY,
     currency: 'BRL',
     history: []
   });
@@ -52,6 +53,7 @@ const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, syst
         planName: '',
         nextBillingDate: new Date().toISOString().split('T')[0],
         status: SubscriptionStatus.ACTIVE,
+        billingCycle: BillingCycle.MONTHLY,
         currency: 'BRL',
         history: []
       });
@@ -185,6 +187,16 @@ const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, syst
                     <option value={SubscriptionStatus.PAUSED}>Pausado</option>
                     <option value={SubscriptionStatus.CANCELLED}>Cancelado</option>
                     <option value={SubscriptionStatus.TRIAL}>Trial</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Forma de Recebimento</label>
+                  <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-bold appearance-none cursor-pointer" value={formData.billingCycle} onChange={e => setFormData({...formData, billingCycle: e.target.value as BillingCycle})}>
+                    <option value={BillingCycle.ONE_TIME}>Pagamento Único</option>
+                    <option value={BillingCycle.WEEKLY}>Recorrente Semanal</option>
+                    <option value={BillingCycle.MONTHLY}>Recorrente Mensal</option>
+                    <option value={BillingCycle.YEARLY}>Recorrente Anual</option>
                   </select>
                 </div>
 

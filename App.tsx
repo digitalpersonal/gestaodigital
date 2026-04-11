@@ -14,7 +14,7 @@ import ExpenseModal from './components/ExpenseModal';
 import ProductSaleModal from './components/ProductSaleModal';
 import Login from './components/Login';
 import SystemDetailView from './components/SystemDetailView';
-import { Client, ExternalSystem, PaymentLog, PaymentStatus, Expense, PaymentType, PaymentStatusConfig } from './types';
+import { Client, ExternalSystem, PaymentLog, PaymentStatus, Expense, PaymentType, PaymentStatusConfig, BillingCycle } from './types';
 import { generateMonthlyReport } from './services/reportService';
 import { supabase } from './services/supabase';
 
@@ -82,6 +82,7 @@ const App: React.FC = () => {
           ...c, 
           systemId: c.system_id, 
           planName: c.plan_name, 
+          billingCycle: c.billing_cycle || BillingCycle.MONTHLY,
           nextBillingDate: c.next_billing_date,
           annualRenewalDate: c.annual_renewal_date
         })));
@@ -151,6 +152,7 @@ const App: React.FC = () => {
         phone: client.phone,
         system_id: client.systemId,
         status: client.status,
+        billing_cycle: client.billingCycle,
         plan_name: client.planName,
         amount: client.amount,
         discount: client.discount || 0,
@@ -169,7 +171,35 @@ const App: React.FC = () => {
         const finalAmount = Math.max(0, client.amount - (client.discount || 0));
         const installments: PaymentLog[] = [];
         let currentDate = new Date(client.nextBillingDate);
-        for (let i = 1; i <= 12; i++) {
+        
+        let numInstallments = 1;
+        let incrementDate = (date: Date) => {};
+        let notePrefix = '';
+
+        switch (client.billingCycle) {
+          case BillingCycle.ONE_TIME:
+            numInstallments = 1;
+            notePrefix = 'Pagamento Único';
+            break;
+          case BillingCycle.WEEKLY:
+            numInstallments = 12; // Generate 12 weeks upfront
+            incrementDate = (date: Date) => date.setDate(date.getDate() + 7);
+            notePrefix = 'Semana';
+            break;
+          case BillingCycle.YEARLY:
+            numInstallments = 5; // Generate 5 years upfront
+            incrementDate = (date: Date) => date.setFullYear(date.getFullYear() + 1);
+            notePrefix = 'Ano';
+            break;
+          case BillingCycle.MONTHLY:
+          default:
+            numInstallments = 12; // Generate 12 months upfront
+            incrementDate = (date: Date) => date.setMonth(date.getMonth() + 1);
+            notePrefix = 'Parcela';
+            break;
+        }
+
+        for (let i = 1; i <= numInstallments; i++) {
           installments.push({
             id: `p_${Math.random().toString(36).substr(2, 9)}`,
             clientId: client.id,
@@ -178,9 +208,9 @@ const App: React.FC = () => {
             date: currentDate.toISOString().split('T')[0],
             status: 'pending',
             type: PaymentType.SUBSCRIPTION,
-            notes: `Parcela ${i}/12 automática`
+            notes: numInstallments > 1 ? `${notePrefix} ${i}/${numInstallments} automática` : notePrefix
           });
-          currentDate.setMonth(currentDate.getMonth() + 1);
+          incrementDate(currentDate);
         }
         
         const paymentsData = installments.map(p => ({

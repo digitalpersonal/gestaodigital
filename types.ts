@@ -25,6 +25,13 @@ export enum SubscriptionStatus {
   TRIAL = 'trial'
 }
 
+export enum BillingCycle {
+  ONE_TIME = 'one_time',
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly',
+  YEARLY = 'yearly'
+}
+
 export enum ExpenseCategory {
   RENT = 'Aluguel',
   UTILITIES = 'Água/Luz/Gás',
@@ -60,6 +67,7 @@ export interface Client {
   phone: string;
   systemId: string;
   status: SubscriptionStatus;
+  billingCycle: BillingCycle;
   planName: string;
   amount: number; 
   discount: number; 
