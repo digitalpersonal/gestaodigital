@@ -1,0 +1,8 @@
+{
+  "name": "Digital Freeshop - Gestão de Pagamentos Multi-Sistema",
+  "description": "Um dashboard completo para gerenciar e analisar pagamentos recorrentes em múltiplos sistemas SaaS independentes e bases de clientes.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
