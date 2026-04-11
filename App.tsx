@@ -14,7 +14,7 @@ import ExpenseModal from './components/ExpenseModal';
 import ProductSaleModal from './components/ProductSaleModal';
 import Login from './components/Login';
 import SystemDetailView from './components/SystemDetailView';
-import { Client, ExternalSystem, PaymentLog, PaymentStatus, Expense, PaymentType, PaymentStatusConfig, BillingCycle } from './types';
+import { Client, ExternalSystem, PaymentLog, PaymentStatus, Expense, PaymentType, PaymentStatusConfig } from './types';
 import { generateMonthlyReport } from './services/reportService';
 import { supabase } from './services/supabase';
 
@@ -82,7 +82,7 @@ const App: React.FC = () => {
           ...c, 
           systemId: c.system_id, 
           planName: c.plan_name, 
-          billingCycle: c.billing_cycle || BillingCycle.MONTHLY,
+          billingCycle: c.billing_cycle,
           nextBillingDate: c.next_billing_date,
           annualRenewalDate: c.annual_renewal_date
         })));
@@ -152,11 +152,11 @@ const App: React.FC = () => {
         phone: client.phone,
         system_id: client.systemId,
         status: client.status,
-        billing_cycle: client.billingCycle,
         plan_name: client.planName,
         amount: client.amount,
         discount: client.discount || 0,
         currency: client.currency || 'BRL',
+        billing_cycle: client.billingCycle,
         next_billing_date: client.nextBillingDate,
         annual_renewal_date: client.annualRenewalDate
       };
@@ -172,34 +172,13 @@ const App: React.FC = () => {
         const installments: PaymentLog[] = [];
         let currentDate = new Date(client.nextBillingDate);
         
-        let numInstallments = 1;
-        let incrementDate = (date: Date) => {};
-        let notePrefix = '';
-
-        switch (client.billingCycle) {
-          case BillingCycle.ONE_TIME:
-            numInstallments = 1;
-            notePrefix = 'Pagamento Único';
-            break;
-          case BillingCycle.WEEKLY:
-            numInstallments = 12; // Generate 12 weeks upfront
-            incrementDate = (date: Date) => date.setDate(date.getDate() + 7);
-            notePrefix = 'Semana';
-            break;
-          case BillingCycle.YEARLY:
-            numInstallments = 5; // Generate 5 years upfront
-            incrementDate = (date: Date) => date.setFullYear(date.getFullYear() + 1);
-            notePrefix = 'Ano';
-            break;
-          case BillingCycle.MONTHLY:
-          default:
-            numInstallments = 12; // Generate 12 months upfront
-            incrementDate = (date: Date) => date.setMonth(date.getMonth() + 1);
-            notePrefix = 'Parcela';
-            break;
-        }
-
-        for (let i = 1; i <= numInstallments; i++) {
+        // Determine number of installments based on billing cycle
+        let installmentsCount = 12; // Default for monthly
+        if (client.billingCycle === 'one_time') installmentsCount = 1;
+        else if (client.billingCycle === 'annually') installmentsCount = 1; // Or maybe 2-3 years, but 1 is safe for now
+        else if (client.billingCycle === 'weekly') installmentsCount = 12; // Project 12 weeks ahead
+        
+        for (let i = 1; i <= installmentsCount; i++) {
           installments.push({
             id: `p_${Math.random().toString(36).substr(2, 9)}`,
             clientId: client.id,
@@ -208,9 +187,17 @@ const App: React.FC = () => {
             date: currentDate.toISOString().split('T')[0],
             status: 'pending',
             type: PaymentType.SUBSCRIPTION,
-            notes: numInstallments > 1 ? `${notePrefix} ${i}/${numInstallments} automática` : notePrefix
+            notes: client.billingCycle === 'one_time' ? 'Pagamento Único' : `Parcela ${i}/${installmentsCount} automática`
           });
-          incrementDate(currentDate);
+          
+          if (client.billingCycle === 'weekly') {
+            currentDate.setDate(currentDate.getDate() + 7);
+          } else if (client.billingCycle === 'annually') {
+            currentDate.setFullYear(currentDate.getFullYear() + 1);
+          } else {
+            // Default to monthly
+            currentDate.setMonth(currentDate.getMonth() + 1);
+          }
         }
         
         const paymentsData = installments.map(p => ({

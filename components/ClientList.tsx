@@ -60,6 +60,16 @@ const ClientList: React.FC<ClientListProps> = ({
     }
   };
 
+  const getBillingCycleLabel = (cycle: string) => {
+    switch (cycle) {
+      case 'weekly': return 'Semanal';
+      case 'monthly': return 'Mensal';
+      case 'annually': return 'Anual';
+      case 'one_time': return 'Único';
+      default: return 'Mensal';
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl border shadow-sm overflow-hidden animate-in fade-in duration-500">
       <div className="p-4 md:p-6 border-b space-y-4">
@@ -166,7 +176,9 @@ const ClientList: React.FC<ClientListProps> = ({
                          <span className="text-lg group-hover:scale-110 transition-transform duration-300">{system?.icon || '💻'}</span>
                          <span className="font-black text-slate-700 text-[10px] md:text-xs">{system?.name}</span>
                       </div>
-                      <div className="text-[9px] text-slate-400 mt-0.5 font-black uppercase truncate max-w-[150px] italic">{client.planName}</div>
+                      <div className="text-[9px] text-slate-400 mt-0.5 font-black uppercase truncate max-w-[150px] italic">
+                        {client.planName} • {getBillingCycleLabel(client.billingCycle)}
+                      </div>
                     </td>
                     <td className="px-6 py-5">
                       <div className="font-black text-slate-900 text-xs md:text-sm">
