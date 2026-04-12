@@ -218,7 +218,8 @@ const App: React.FC = () => {
         discount: client.discount || 0,
         currency: client.currency || 'BRL',
         next_billing_date: client.nextBillingDate,
-        annual_renewal_date: client.annualRenewalDate
+        annual_renewal_date: client.annualRenewalDate,
+        history: client.history || []
       };
 
       if (editingClient) {

@@ -9,7 +9,7 @@ import {
   Bar,
   Cell
 } from 'recharts';
-import { Client, PaymentLog, ExternalSystem, SubscriptionStatus, Expense, PaymentStatus, PaymentType } from '../types';
+import { Client, PaymentLog, ExternalSystem, SubscriptionStatus, Expense, PaymentStatus, PaymentType, BillingCycle } from '../types';
 
 interface DashboardProps {
   clients: Client[];
@@ -59,9 +59,11 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, payments, systems, expen
   const totalMRR = clients
     .filter(c => c.status === SubscriptionStatus.ACTIVE)
     .reduce((acc, curr) => {
-      const isAnnual = curr.planName.toLowerCase().includes('anual');
       const netAmount = Math.max(0, curr.amount - (curr.discount || 0));
-      return acc + (isAnnual ? netAmount / 12 : netAmount);
+      if (curr.billingCycle === BillingCycle.ANNUAL) return acc + (netAmount / 12);
+      if (curr.billingCycle === BillingCycle.WEEKLY) return acc + (netAmount * 4.33); // Média de semanas no mês
+      if (curr.billingCycle === BillingCycle.ONETIME) return acc; // Pagamento único não entra no MRR
+      return acc + netAmount; // Mensal (padrão)
     }, 0);
   
   const globalExpenses = expenses

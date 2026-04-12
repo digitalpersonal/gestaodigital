@@ -21,6 +21,7 @@ CREATE TABLE clients (
     currency TEXT NOT NULL DEFAULT 'BRL',
     next_billing_date DATE NOT NULL,
     annual_renewal_date DATE,
+    history JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
