@@ -233,13 +233,15 @@ const App: React.FC = () => {
         
         const finalAmount = Math.max(0, client.amount - (client.discount || 0));
         const installments: PaymentLog[] = [];
-        let currentDate = new Date(client.nextBillingDate);
+        
+        // Usar data com hora fixa para evitar problemas de fuso horário ao converter para ISO
+        let currentDate = new Date(client.nextBillingDate + 'T12:00:00');
         
         // Determinar número de parcelas e intervalo
         let numInstallments = 1;
-        if (client.billingCycle === BillingCycle.MONTHLY) numInstallments = 6; // 6 meses por vez
-        else if (client.billingCycle === BillingCycle.WEEKLY) numInstallments = 12; // ~3 meses (12 semanas)
-        else if (client.billingCycle === BillingCycle.ANNUAL) numInstallments = 1; // 1 ano por vez
+        if (client.billingCycle === BillingCycle.MONTHLY) numInstallments = 6; 
+        else if (client.billingCycle === BillingCycle.WEEKLY) numInstallments = 12; 
+        else if (client.billingCycle === BillingCycle.ANNUAL) numInstallments = 1; 
         else if (client.billingCycle === BillingCycle.ONETIME) numInstallments = 1;
 
         for (let i = 1; i <= numInstallments; i++) {
@@ -263,8 +265,8 @@ const App: React.FC = () => {
             currentDate.setDate(currentDate.getDate() + 7);
           } else if (client.billingCycle === BillingCycle.ANNUAL) {
             currentDate.setFullYear(currentDate.getFullYear() + 1);
-          } else {
-            break; // Pagamento único não avança
+          } else if (client.billingCycle === BillingCycle.ONETIME) {
+            break;
           }
         }
         
