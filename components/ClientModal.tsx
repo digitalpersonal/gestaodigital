@@ -6,6 +6,7 @@ interface ClientModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (client: Client) => void;
+  onRenew?: (client: Client) => void;
   systems: ExternalSystem[];
   editingClient?: Client | null;
 }
@@ -16,7 +17,7 @@ const MONTHS = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
-const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, systems, editingClient }) => {
+const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, onRenew, systems, editingClient }) => {
   const [formData, setFormData] = useState<Partial<Client>>({
     name: '',
     email: '',
@@ -350,6 +351,17 @@ const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, syst
           >
             Cancelar
           </button>
+          
+          {editingClient && onRenew && (
+            <button 
+              type="button" 
+              onClick={() => onRenew(formData as Client)}
+              className="flex-1 sm:flex-none px-8 py-3.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl font-black hover:bg-emerald-100 transition-all uppercase text-[10px] tracking-widest active:scale-95 flex items-center justify-center gap-2"
+            >
+              <span>🔄</span> Gerar + Parcelas
+            </button>
+          )}
+
           <button 
             type="submit" 
             form="client-form"

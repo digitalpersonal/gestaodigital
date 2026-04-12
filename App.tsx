@@ -212,13 +212,13 @@ const App: React.FC = () => {
         phone: client.phone,
         system_id: client.systemId,
         status: client.status,
-        billing_cycle: client.billingCycle,
+        billing_cycle: client.billingCycle || BillingCycle.MONTHLY,
         plan_name: client.planName,
         amount: client.amount,
         discount: client.discount || 0,
         currency: client.currency || 'BRL',
         next_billing_date: client.nextBillingDate,
-        annual_renewal_date: client.annualRenewalDate,
+        annual_renewal_date: client.annualRenewalDate || null,
         history: client.history || []
       };
 
@@ -237,9 +237,9 @@ const App: React.FC = () => {
         
         // Determinar número de parcelas e intervalo
         let numInstallments = 1;
-        if (client.billingCycle === BillingCycle.MONTHLY) numInstallments = 12;
-        else if (client.billingCycle === BillingCycle.WEEKLY) numInstallments = 52;
-        else if (client.billingCycle === BillingCycle.ANNUAL) numInstallments = 2;
+        if (client.billingCycle === BillingCycle.MONTHLY) numInstallments = 6; // 6 meses por vez
+        else if (client.billingCycle === BillingCycle.WEEKLY) numInstallments = 12; // ~3 meses (12 semanas)
+        else if (client.billingCycle === BillingCycle.ANNUAL) numInstallments = 1; // 1 ano por vez
         else if (client.billingCycle === BillingCycle.ONETIME) numInstallments = 1;
 
         for (let i = 1; i <= numInstallments; i++) {
@@ -288,8 +288,70 @@ const App: React.FC = () => {
       }
       setEditingClient(null);
     } catch (error: any) {
-      console.error('Error saving client:', error);
-      showToast(`Erro ao salvar: ${error.message || 'Verifique sua conexão'}`, "info");
+      console.error('Detailed Error saving client:', error);
+      const errorMessage = error.message || error.details || 'Verifique sua conexão e o console para mais detalhes';
+      showToast(`Erro ao salvar: ${errorMessage}`, "info");
+    }
+  };
+
+  const handleRenewClient = async (client: Client) => {
+    try {
+      const finalAmount = Math.max(0, client.amount - (client.discount || 0));
+      const installments: PaymentLog[] = [];
+      
+      // Encontrar a última parcela para saber de onde continuar
+      const clientPayments = payments.filter(p => p.clientId === client.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      let startDate = new Date();
+      if (clientPayments.length > 0) {
+        startDate = new Date(clientPayments[0].date);
+        // Avançar um período conforme o ciclo
+        if (client.billingCycle === BillingCycle.MONTHLY) startDate.setMonth(startDate.getMonth() + 1);
+        else if (client.billingCycle === BillingCycle.WEEKLY) startDate.setDate(startDate.getDate() + 7);
+        else if (client.billingCycle === BillingCycle.ANNUAL) startDate.setFullYear(startDate.getFullYear() + 1);
+      }
+
+      let numInstallments = 1;
+      if (client.billingCycle === BillingCycle.MONTHLY) numInstallments = 6;
+      else if (client.billingCycle === BillingCycle.WEEKLY) numInstallments = 12;
+      else if (client.billingCycle === BillingCycle.ANNUAL) numInstallments = 1;
+
+      for (let i = 1; i <= numInstallments; i++) {
+        installments.push({
+          id: `p_${Math.random().toString(36).substr(2, 9)}`,
+          clientId: client.id,
+          systemId: client.systemId,
+          amount: finalAmount,
+          date: startDate.toISOString().split('T')[0],
+          status: 'pending',
+          type: PaymentType.SUBSCRIPTION,
+          notes: `Renovação: Parcela ${i}/${numInstallments} (${client.billingCycle})`
+        });
+
+        if (client.billingCycle === BillingCycle.MONTHLY) startDate.setMonth(startDate.getMonth() + 1);
+        else if (client.billingCycle === BillingCycle.WEEKLY) startDate.setDate(startDate.getDate() + 7);
+        else if (client.billingCycle === BillingCycle.ANNUAL) startDate.setFullYear(startDate.getFullYear() + 1);
+      }
+
+      const paymentsData = installments.map(p => ({
+        id: p.id,
+        client_id: p.clientId,
+        system_id: p.systemId,
+        amount: p.amount,
+        date: p.date,
+        status: p.status,
+        type: p.type,
+        notes: p.notes
+      }));
+
+      const { error } = await supabase.from('payment_logs').insert(paymentsData);
+      if (error) throw error;
+
+      setPayments([...installments, ...payments]);
+      showToast(`Mais ${numInstallments} parcelas geradas para ${client.name}!`);
+      setIsClientModalOpen(false);
+    } catch (error: any) {
+      console.error('Error renewing client:', error);
+      showToast(`Erro ao renovar: ${error.message}`, "info");
     }
   };
 
@@ -744,7 +806,7 @@ const App: React.FC = () => {
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
               </div>
             )}
-            <ClientModal isOpen={isClientModalOpen} onClose={() => setIsClientModalOpen(false)} onSave={handleSaveClient} systems={systems} editingClient={editingClient} />
+            <ClientModal isOpen={isClientModalOpen} onClose={() => setIsClientModalOpen(false)} onSave={handleSaveClient} onRenew={handleRenewClient} systems={systems} editingClient={editingClient} />
             <SystemModal isOpen={isSystemModalOpen} onClose={() => setIsSystemModalOpen(false)} onSave={handleSaveSystem} editingSystem={editingSystem} />
             <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} onSave={handleSavePayment} clients={clients} systems={systems} editingPayment={editingPayment} statusConfigs={statusConfigs} />
             <ExpenseModal 

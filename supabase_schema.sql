@@ -1,3 +1,7 @@
+-- SCRIPT DE ATUALIZAÇÃO (Execute isso no SQL Editor do Supabase se já tiver as tabelas)
+-- ALTER TABLE clients ADD COLUMN IF NOT EXISTS billing_cycle TEXT NOT NULL DEFAULT 'monthly';
+-- ALTER TABLE clients ADD COLUMN IF NOT EXISTS history JSONB DEFAULT '[]'::jsonb;
+
 -- Create tables
 
 CREATE TABLE external_systems (
@@ -93,3 +97,10 @@ INSERT INTO expenses (id, description, category, amount, due_date, status) VALUE
 INSERT INTO payment_status_configs (id, label, color_class, is_default) VALUES
 ('paid', 'Pago', 'bg-emerald-100 text-emerald-700 border-emerald-200', true),
 ('pending', 'Pendente', 'bg-amber-100 text-amber-700 border-amber-200', true);
+
+-- DESATIVAR RLS PARA TESTES (Execute se tiver erro de permissão)
+-- ALTER TABLE external_systems DISABLE ROW LEVEL SECURITY;
+-- ALTER TABLE clients DISABLE ROW LEVEL SECURITY;
+-- ALTER TABLE payment_logs DISABLE ROW LEVEL SECURITY;
+-- ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
+-- ALTER TABLE payment_status_configs DISABLE ROW LEVEL SECURITY;
