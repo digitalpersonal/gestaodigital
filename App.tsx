@@ -496,6 +496,18 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeletePayment = async (id: string) => {
+    try {
+      const { error } = await supabase.from('payment_logs').delete().eq('id', id);
+      if (error) throw error;
+      setPayments(payments.filter(p => p.id !== id));
+      showToast("Parcela excluída com sucesso!");
+    } catch (error: any) {
+      console.error('Error deleting payment:', error);
+      showToast(`Erro ao excluir: ${error.message}`, "info");
+    }
+  };
+
   const handleToggleExpense = async (id: string) => {
     const expense = expenses.find(e => e.id === id);
     if (!expense) return;
@@ -598,6 +610,7 @@ const App: React.FC = () => {
               onEditClient={(c) => { setEditingClient(c); setIsClientModalOpen(true); }}
               onDeleteClient={handleDeleteClient}
               onEditPayment={(p) => { setEditingPayment(p); setIsPaymentModalOpen(true); }}
+              onDeletePayment={handleDeletePayment}
               onEditExpense={(e) => { setEditingExpense(e); setIsExpenseModalOpen(true); }}
               onDeleteExpense={handleDeleteExpense}
               onToggleExpense={handleToggleExpense}
@@ -662,6 +675,7 @@ const App: React.FC = () => {
           onUpdateStatusConfigs={handleUpdateStatusConfigs}
           onQuickPay={handleQuickPay}
           onEditPayment={p => { setEditingPayment(p); setIsPaymentModalOpen(true); }}
+          onDeletePayment={handleDeletePayment}
           onNewManualPayment={() => { setEditingPayment(null); setIsPaymentModalOpen(true); }}
         />;
       case 'expenses':

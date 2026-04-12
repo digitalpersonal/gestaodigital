@@ -17,6 +17,7 @@ interface SystemDetailViewProps {
   onEditClient: (client: Client) => void;
   onDeleteClient: (id: string) => void;
   onEditPayment: (payment: PaymentLog) => void;
+  onDeletePayment: (id: string) => void;
   onEditExpense: (expense: Expense) => void;
   onDeleteExpense: (id: string) => void;
   onToggleExpense: (id: string) => void;
@@ -36,6 +37,7 @@ const SystemDetailView: React.FC<SystemDetailViewProps> = ({
   onEditClient,
   onDeleteClient,
   onEditPayment,
+  onDeletePayment,
   onEditExpense,
   onDeleteExpense,
   onToggleExpense,
@@ -150,7 +152,7 @@ const SystemDetailView: React.FC<SystemDetailViewProps> = ({
           <ClientList clients={systemClients} systems={allSystems} initialFilter={system.id} onManageClient={onEditClient} onDeleteClient={onDeleteClient} />
         )}
         {activeSubTab === 'finance' && (
-          <PaymentHistory payments={systemPayments} systems={allSystems} clients={systemClients} statusConfigs={statusConfigs} onUpdateStatusConfigs={() => {}} onEditPayment={onEditPayment} onNewManualPayment={onNewPayment} />
+          <PaymentHistory payments={systemPayments} systems={allSystems} clients={systemClients} statusConfigs={statusConfigs} onUpdateStatusConfigs={() => {}} onEditPayment={onEditPayment} onDeletePayment={onDeletePayment} onNewManualPayment={onNewPayment} />
         )}
         {activeSubTab === 'expenses' && (
           <ExpenseList expenses={systemExpenses} onEdit={onEditExpense} onDelete={onDeleteExpense} onToggleStatus={onToggleExpense} />

@@ -1,4 +1,4 @@
-import { ExternalSystem, Client, PaymentLog, SubscriptionStatus, PaymentStatus, Expense, ExpenseCategory, PaymentType } from './types';
+import { ExternalSystem, Client, PaymentLog, SubscriptionStatus, PaymentStatus, Expense, ExpenseCategory, PaymentType, BillingCycle } from './types';
 
 export const EXTERNAL_SYSTEMS: ExternalSystem[] = [
   { id: 'sys_guarafood', name: 'GuaraFood', color: 'bg-orange-500', icon: '🍔' },
@@ -23,7 +23,8 @@ export const MOCK_CLIENTS: Client[] = [
     amount: 149.90, 
     discount: 0, 
     currency: 'BRL', 
-    nextBillingDate: '2024-06-15' 
+    nextBillingDate: '2024-06-15',
+    billingCycle: BillingCycle.MONTHLY
   },
   { 
     id: 'c_2', 
@@ -36,7 +37,8 @@ export const MOCK_CLIENTS: Client[] = [
     amount: 89.90, 
     discount: 10, 
     currency: 'BRL', 
-    nextBillingDate: '2024-06-10' 
+    nextBillingDate: '2024-06-10',
+    billingCycle: BillingCycle.MONTHLY
   },
   { 
     id: 'c_3', 
@@ -49,7 +51,8 @@ export const MOCK_CLIENTS: Client[] = [
     amount: 199.00, 
     discount: 0, 
     currency: 'BRL', 
-    nextBillingDate: '2024-06-20' 
+    nextBillingDate: '2024-06-20',
+    billingCycle: BillingCycle.MONTHLY
   },
   { 
     id: 'c_4', 
@@ -62,7 +65,8 @@ export const MOCK_CLIENTS: Client[] = [
     amount: 580.00, 
     discount: 50, 
     currency: 'BRL', 
-    nextBillingDate: '2025-05-01' 
+    nextBillingDate: '2025-05-01',
+    billingCycle: BillingCycle.ANNUAL
   },
   { 
     id: 'c_5', 
@@ -75,7 +79,8 @@ export const MOCK_CLIENTS: Client[] = [
     amount: 150.00, 
     discount: 0, 
     currency: 'BRL', 
-    nextBillingDate: '2024-06-05' 
+    nextBillingDate: '2024-06-05',
+    billingCycle: BillingCycle.MONTHLY
   }
 ];
 
