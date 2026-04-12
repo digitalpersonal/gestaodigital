@@ -393,6 +393,17 @@ const PaymentHistory: React.FC<PaymentHistoryProps> = ({
               >
                 ✎
               </button>
+              <button 
+                onClick={() => {
+                  if (window.confirm('Tem certeza que deseja excluir esta parcela?')) {
+                    onDeletePayment?.(p.id);
+                  }
+                }} 
+                className="p-2 text-rose-600 bg-rose-50 rounded-xl shadow-sm border border-rose-100 hover:bg-rose-100 transition-all"
+                title="Excluir"
+              >
+                ✕
+              </button>
             </div>
           </td>
         );

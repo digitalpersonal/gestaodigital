@@ -262,7 +262,8 @@ const App: React.FC = () => {
           if (client.billingCycle === BillingCycle.MONTHLY) {
             currentDate.setMonth(currentDate.getMonth() + 1);
           } else if (client.billingCycle === BillingCycle.WEEKLY) {
-            currentDate.setDate(currentDate.getDate() + 7);
+            // Usar milissegundos para garantir 7 dias exatos (7 * 24 * 60 * 60 * 1000)
+            currentDate = new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000);
           } else if (client.billingCycle === BillingCycle.ANNUAL) {
             currentDate.setFullYear(currentDate.getFullYear() + 1);
           } else if (client.billingCycle === BillingCycle.ONETIME) {
@@ -304,11 +305,11 @@ const App: React.FC = () => {
       // Encontrar a última parcela para saber de onde continuar
       const clientPayments = payments.filter(p => p.clientId === client.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       let startDate = new Date();
-      if (clientPayments.length > 0) {
-        startDate = new Date(clientPayments[0].date);
+        if (clientPayments.length > 0) {
+        startDate = new Date(clientPayments[0].date + 'T12:00:00');
         // Avançar um período conforme o ciclo
         if (client.billingCycle === BillingCycle.MONTHLY) startDate.setMonth(startDate.getMonth() + 1);
-        else if (client.billingCycle === BillingCycle.WEEKLY) startDate.setDate(startDate.getDate() + 7);
+        else if (client.billingCycle === BillingCycle.WEEKLY) startDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
         else if (client.billingCycle === BillingCycle.ANNUAL) startDate.setFullYear(startDate.getFullYear() + 1);
       }
 
@@ -330,7 +331,7 @@ const App: React.FC = () => {
         });
 
         if (client.billingCycle === BillingCycle.MONTHLY) startDate.setMonth(startDate.getMonth() + 1);
-        else if (client.billingCycle === BillingCycle.WEEKLY) startDate.setDate(startDate.getDate() + 7);
+        else if (client.billingCycle === BillingCycle.WEEKLY) startDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
         else if (client.billingCycle === BillingCycle.ANNUAL) startDate.setFullYear(startDate.getFullYear() + 1);
       }
 
