@@ -15,6 +15,7 @@ import ProductSaleModal from './components/ProductSaleModal';
 import Login from './components/Login';
 import SystemDetailView from './components/SystemDetailView';
 import { Client, ExternalSystem, PaymentLog, PaymentStatus, Expense, PaymentType, PaymentStatusConfig, BillingCycle } from './types';
+import { EXTERNAL_SYSTEMS, MOCK_CLIENTS, MOCK_PAYMENTS, MOCK_EXPENSES } from './constants';
 import { generateMonthlyReport } from './services/reportService';
 import { supabase } from './services/supabase';
 
@@ -36,7 +37,7 @@ const App: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [statusConfigs, setStatusConfigs] = useState<PaymentStatusConfig[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [supabaseConfigured, setSupabaseConfigured] = useState(true);
+  const [supabaseConfigStatus, setSupabaseConfigStatus] = useState<'ok' | 'missing_keys' | 'missing_tables'>('ok');
 
   const [clientFilterSystemId, setClientFilterSystemId] = useState('all');
   const [viewingSystemId, setViewingSystemId] = useState<string | null>(null);
@@ -64,7 +65,7 @@ const App: React.FC = () => {
       const url = import.meta.env.VITE_SUPABASE_URL;
       const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
       if (!url || url.includes('placeholder') || !key || key.includes('placeholder')) {
-        setSupabaseConfigured(false);
+        setSupabaseConfigStatus('missing_keys');
       }
     };
     checkConfig();
@@ -78,8 +79,13 @@ const App: React.FC = () => {
       const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
       if (!url || url.includes('placeholder') || !key || key.includes('placeholder')) {
-        console.warn('Supabase not configured. Using empty state.');
-        setSupabaseConfigured(false);
+        console.warn('Supabase não configurado. Carregando modo demonstração.');
+        setSupabaseConfigStatus('missing_keys');
+        setSystems(EXTERNAL_SYSTEMS);
+        setClients(MOCK_CLIENTS);
+        setPayments(MOCK_PAYMENTS);
+        setExpenses(MOCK_EXPENSES);
+        setStatusConfigs(DEFAULT_STATUS_CONFIGS);
         return;
       }
 
@@ -105,9 +111,13 @@ const App: React.FC = () => {
         if (expensesError) throw expensesError;
         if (statusConfigsError) throw statusConfigsError;
 
-        if (systemsData) setSystems(systemsData.map(s => ({...s, id: s.id})));
+        if (systemsData && systemsData.length > 0) {
+          setSystems(systemsData.map(s => ({...s, id: s.id})));
+        } else {
+          setSystems(EXTERNAL_SYSTEMS);
+        }
         
-        if (clientsData) {
+        if (clientsData && clientsData.length > 0) {
           setClients(clientsData.map(c => ({
             ...c, 
             systemId: c.system_id, 
@@ -116,9 +126,11 @@ const App: React.FC = () => {
             nextBillingDate: c.next_billing_date,
             annualRenewalDate: c.annual_renewal_date
           })));
+        } else {
+          setClients(MOCK_CLIENTS);
         }
 
-        if (paymentsData) {
+        if (paymentsData && paymentsData.length > 0) {
           setPayments(paymentsData.map(p => ({
             ...p,
             clientId: p.client_id,
@@ -126,45 +138,51 @@ const App: React.FC = () => {
             clientName: p.client_name,
             costAmount: p.cost_amount
           })));
+        } else {
+          setPayments(MOCK_PAYMENTS);
         }
 
-        if (expensesData) {
+        if (expensesData && expensesData.length > 0) {
           setExpenses(expensesData.map(e => ({
             ...e,
             dueDate: e.due_date,
             systemId: e.system_id
           })));
+        } else {
+          setExpenses(MOCK_EXPENSES);
         }
 
-        if (statusConfigsData) {
-          if (statusConfigsData.length > 0) {
-            setStatusConfigs(statusConfigsData.map(s => ({
-              ...s,
-              colorClass: s.color_class,
-              isDefault: s.is_default
-            })));
-          } else {
-            setStatusConfigs(DEFAULT_STATUS_CONFIGS);
-          }
+        if (statusConfigsData && statusConfigsData.length > 0) {
+          setStatusConfigs(statusConfigsData.map(s => ({
+            ...s,
+            colorClass: s.color_class,
+            isDefault: s.is_default
+          })));
+        } else {
+          setStatusConfigs(DEFAULT_STATUS_CONFIGS);
         }
         
-        setSupabaseConfigured(true);
-        
-        // Se as tabelas existem mas estão vazias, pode ser que o usuário não rodou o SQL
-        if (systemsData?.length === 0 && clientsData?.length === 0) {
-          console.info('Database connected but empty. Did you run the SQL script?');
-        }
+        setSupabaseConfigStatus('ok');
 
       } catch (error: any) {
-        console.error('Error fetching data:', error);
+        console.warn('Conexão Supabase aguardando configuração ou tabelas:', error);
         let msg = "Erro ao conectar com Supabase.";
-        if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
-          msg = "Tabelas não encontradas. Você rodou o script SQL no Supabase?";
+        let status: 'ok' | 'missing_keys' | 'missing_tables' = 'ok';
+        if (error.message?.includes('relation') || error.message?.includes('does not exist') || error.code === 'PGRST205' || error.code === 'PGRST116') {
+          msg = "Tabelas do Supabase não encontradas. Exibindo modo demonstração.";
+          status = 'missing_tables';
         } else if (error.message?.includes('JWT') || error.code === 'PGRST301') {
-          msg = "Erro de autenticação/RLS. Verifique as políticas no Supabase.";
+          msg = "Erro de permissão no Supabase (RLS). Exibindo modo demonstração.";
         }
         showToast(msg, "info");
-        setSupabaseConfigured(false);
+        setSupabaseConfigStatus(status === 'ok' ? 'missing_keys' : status);
+
+        // Carrega os dados locais de demonstração para que a interface não fique vazia
+        setSystems(EXTERNAL_SYSTEMS);
+        setClients(MOCK_CLIENTS);
+        setPayments(MOCK_PAYMENTS);
+        setExpenses(MOCK_EXPENSES);
+        setStatusConfigs(DEFAULT_STATUS_CONFIGS);
       } finally {
         setIsLoading(false);
       }
@@ -172,6 +190,144 @@ const App: React.FC = () => {
 
     fetchData();
   }, [isLoggedIn]);
+
+  const handleSeedDatabase = async () => {
+    setIsLoading(true);
+    try {
+      // 1. Systems
+      await supabase.from('external_systems').upsert(
+        EXTERNAL_SYSTEMS.map(s => ({ id: s.id, name: s.name, color: s.color, icon: s.icon }))
+      );
+      // 2. Clients
+      await supabase.from('clients').upsert(
+        MOCK_CLIENTS.map(c => ({
+          id: c.id,
+          name: c.name,
+          email: c.email,
+          phone: c.phone,
+          system_id: c.systemId,
+          status: c.status,
+          billing_cycle: c.billingCycle,
+          plan_name: c.planName,
+          amount: c.amount,
+          discount: c.discount,
+          currency: c.currency,
+          next_billing_date: c.nextBillingDate
+        }))
+      );
+      // 3. Payments
+      await supabase.from('payment_logs').upsert(
+        MOCK_PAYMENTS.map(p => ({
+          id: p.id,
+          client_id: p.clientId,
+          system_id: p.systemId,
+          amount: p.amount,
+          date: p.date,
+          status: p.status,
+          type: p.type,
+          notes: p.notes
+        }))
+      );
+      // 4. Expenses
+      await supabase.from('expenses').upsert(
+        MOCK_EXPENSES.map(e => ({
+          id: e.id,
+          description: e.description,
+          category: e.category,
+          amount: e.amount,
+          due_date: e.dueDate,
+          status: e.status
+        }))
+      );
+      // 5. Status configs
+      await supabase.from('payment_status_configs').upsert(
+        DEFAULT_STATUS_CONFIGS.map(s => ({
+          id: s.id,
+          label: s.label,
+          color_class: s.colorClass,
+          is_default: s.isDefault
+        }))
+      );
+
+      showToast("Banco de dados do Supabase populado com dados iniciais com sucesso!", "success");
+      setSupabaseConfigStatus('ok');
+      window.location.reload();
+    } catch (err: any) {
+      console.error("Erro ao popular banco de dados:", err);
+      showToast(`Erro ao popular banco: ${err.message}`, "info");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  const copySqlScript = () => {
+    const sql = `CREATE TABLE IF NOT EXISTS external_systems (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    icon TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS clients (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    system_id TEXT REFERENCES external_systems(id),
+    status TEXT NOT NULL,
+    billing_cycle TEXT NOT NULL DEFAULT 'monthly',
+    plan_name TEXT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    discount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'BRL',
+    next_billing_date DATE NOT NULL,
+    annual_renewal_date DATE,
+    history JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS payment_logs (
+    id TEXT PRIMARY KEY,
+    client_id TEXT REFERENCES clients(id),
+    client_name TEXT,
+    system_id TEXT REFERENCES external_systems(id),
+    amount DECIMAL(10, 2) NOT NULL,
+    cost_amount DECIMAL(10, 2),
+    date DATE NOT NULL,
+    status TEXT NOT NULL,
+    type TEXT NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS expenses (
+    id TEXT PRIMARY KEY,
+    description TEXT NOT NULL,
+    category TEXT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    due_date DATE NOT NULL,
+    status TEXT NOT NULL,
+    notes TEXT,
+    system_id TEXT REFERENCES external_systems(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS payment_status_configs (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    color_class TEXT NOT NULL,
+    is_default BOOLEAN DEFAULT FALSE
+);
+
+ALTER TABLE external_systems DISABLE ROW LEVEL SECURITY;
+ALTER TABLE clients DISABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_status_configs DISABLE ROW LEVEL SECURITY;`;
+    navigator.clipboard.writeText(sql);
+    showToast("Script SQL copiado! Cole no SQL Editor do Supabase.", "success");
+  };
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setNotification({ message, type });
@@ -729,9 +885,9 @@ const App: React.FC = () => {
                     <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest truncate opacity-80">
                       Digital Freeshop Admin
                     </p>
-                    <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${supabaseConfigured ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                      <span className={`w-1 h-1 rounded-full ${supabaseConfigured ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`}></span>
-                      {supabaseConfigured ? 'Supabase Conectado' : 'Supabase Desconectado'}
+                    <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${supabaseConfigStatus === 'ok' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                      <span className={`w-1 h-1 rounded-full ${supabaseConfigStatus === 'ok' ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`}></span>
+                      {supabaseConfigStatus === 'ok' ? 'Supabase Conectado' : (supabaseConfigStatus === 'missing_tables' ? 'Tabelas Ausentes' : 'Supabase Desconectado')}
                     </div>
                     {(activeTab !== 'dashboard' || viewingSystemId) && (
                       <button 
@@ -782,36 +938,56 @@ const App: React.FC = () => {
           </header>
 
           <div className="w-full">
-            {!supabaseConfigured && isLoggedIn && (
+            {supabaseConfigStatus !== 'ok' && isLoggedIn && (
               <div className="mb-6 p-5 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col gap-4 animate-in slide-in-from-top duration-500">
                 <div className="flex items-start gap-4">
                   <div className="text-3xl mt-1">🚀</div>
                   <div className="flex-1">
-                    <h4 className="text-base font-black text-amber-900">Configuração do Supabase Necessária</h4>
+                    <h4 className="text-base font-black text-amber-900">
+                      {supabaseConfigStatus === 'missing_tables' ? 'Tabelas não encontradas no Supabase (Modo Demonstração Ativo)' : 'Configuração do Supabase Necessária'}
+                    </h4>
                     <p className="text-sm text-amber-700 mt-1">
-                      O sistema está pronto, mas precisa se conectar ao seu banco de dados para carregar e salvar informações permanentemente.
+                      {supabaseConfigStatus === 'missing_tables' 
+                        ? 'Sua conexão com o Supabase está pronta, mas o banco de dados ainda não tem as tabelas criadas. O sistema está exibindo os dados de demonstração para que você possa usar a interface.'
+                        : 'O sistema está pronto em modo demonstração local. Para salvar permanentemente, conecte seu banco de dados Supabase.'}
                     </p>
                     
                     <div className="mt-4 space-y-3">
+                      {supabaseConfigStatus === 'missing_keys' && (
+                        <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
+                          <span className="w-5 h-5 flex items-center justify-center bg-amber-200 rounded-full text-[10px]">1</span>
+                          Configure as chaves <b>VITE_SUPABASE_URL</b> e <b>VITE_SUPABASE_ANON_KEY</b> nas Configurações do App (Secrets).
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
-                        <span className="w-5 h-5 flex items-center justify-center bg-amber-200 rounded-full text-[10px]">1</span>
-                        Configure as chaves <b>VITE_SUPABASE_URL</b> e <b>VITE_SUPABASE_ANON_KEY</b> no menu de Configurações (Secrets).
+                        <span className="w-5 h-5 flex items-center justify-center bg-amber-200 rounded-full text-[10px]">{supabaseConfigStatus === 'missing_keys' ? '2' : '1'}</span>
+                        Clique no botão abaixo para <b>Copiar o Script SQL</b> e cole-o no <b>SQL Editor</b> do seu painel Supabase.
                       </div>
                       <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
-                        <span className="w-5 h-5 flex items-center justify-center bg-amber-200 rounded-full text-[10px]">2</span>
-                        Copie o conteúdo do arquivo <b>supabase_schema.sql</b> e execute no SQL Editor do seu painel Supabase.
-                      </div>
-                      <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
-                        <span className="w-5 h-5 flex items-center justify-center bg-amber-200 rounded-full text-[10px]">3</span>
-                        Certifique-se de que o RLS (Row Level Security) está desativado ou com políticas de acesso configuradas.
+                        <span className="w-5 h-5 flex items-center justify-center bg-amber-200 rounded-full text-[10px]">{supabaseConfigStatus === 'missing_keys' ? '3' : '2'}</span>
+                        Após executar o script no Supabase, clique em <b>Verificar Conexão</b> ou <b>Popular Banco</b>.
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end gap-3 pt-2 border-t border-amber-100">
+                <div className="flex flex-wrap justify-end gap-3 pt-3 border-t border-amber-200/60">
+                  <button 
+                    onClick={copySqlScript}
+                    className="px-4 py-2 bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold rounded-xl hover:bg-amber-200 transition-all active:scale-95 flex items-center gap-2"
+                  >
+                    <span>📋</span> Copiar Script SQL para Supabase
+                  </button>
+                  {supabaseConfigStatus === 'missing_tables' && (
+                    <button 
+                      onClick={handleSeedDatabase}
+                      className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-all active:scale-95 shadow-md shadow-emerald-200 flex items-center gap-2"
+                    >
+                      <span>⚡</span> Popular Banco no Supabase
+                    </button>
+                  )}
                   <button 
                     onClick={() => window.location.reload()}
-                    className="px-6 py-2.5 bg-amber-600 text-white text-xs font-black rounded-xl hover:bg-amber-700 transition-all active:scale-95 shadow-lg shadow-amber-200"
+                    className="px-5 py-2 bg-amber-600 text-white text-xs font-black rounded-xl hover:bg-amber-700 transition-all active:scale-95 shadow-md shadow-amber-200"
                   >
                     Verificar Conexão Agora
                   </button>

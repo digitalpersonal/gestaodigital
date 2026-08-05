@@ -98,9 +98,9 @@ INSERT INTO payment_status_configs (id, label, color_class, is_default) VALUES
 ('paid', 'Pago', 'bg-emerald-100 text-emerald-700 border-emerald-200', true),
 ('pending', 'Pendente', 'bg-amber-100 text-amber-700 border-amber-200', true);
 
--- DESATIVAR RLS PARA TESTES (Execute se tiver erro de permissão)
--- ALTER TABLE external_systems DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE clients DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE payment_logs DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE payment_status_configs DISABLE ROW LEVEL SECURITY;
+-- DESATIVAR RLS PARA PERMITIR LEITURA E ESCRITA PELA APLICAÇÃO
+ALTER TABLE external_systems DISABLE ROW LEVEL SECURITY;
+ALTER TABLE clients DISABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_status_configs DISABLE ROW LEVEL SECURITY;
